@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">YouyunSample</string>
+    <string name="button_send">发送</string>
+    <string name="button_pushtotalk">按住说话</string>
+    <string name="button_take_photo">拍照</string>
+    <string name="button_picture">图片</string>
+    <string name="button_photo_gallery">相册</string>
+</resources>
