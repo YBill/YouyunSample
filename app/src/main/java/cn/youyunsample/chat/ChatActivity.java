@@ -1,6 +1,5 @@
 package cn.youyunsample.chat;
 
-import android.app.Activity;
 import android.content.Context;
 import android.os.Bundle;
 import android.support.v4.view.ViewPager;
@@ -11,6 +10,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import cn.youyunsample.R;
+import cn.youyunsample.base.BaseActivity;
 import cn.youyunsample.chat.adapter.ExpressionGridViewAdapter;
 import cn.youyunsample.chat.adapter.ExpressionPagerAdapter;
 import cn.youyunsample.widgets.ExpandGridView;
@@ -29,13 +30,13 @@ import cn.youyunsample.widgets.ExpandGridView;
 /**
  * Created by 卫彪 on 2016/6/3.
  */
-public class ChatActivity extends Activity implements View.OnClickListener{
+public class ChatActivity extends BaseActivity<ChatView, ChatPresenter> implements ChatView, View.OnClickListener{
 
     private Button buttonSetModeVoice; // 左侧语音键盘按钮
     private View buttonPressToSpeak; // 按住说话按钮
-    private RelativeLayout edittext_layout; // 输入框外层View,包括EditText和emoji表情按钮
+    private RelativeLayout editLayout; // 输入框外层View,包括EditText和emoji表情按钮
     private EditText mEditTextContent; // 输入框
-    private ImageView iv_emoticons_normal; // emoji图标
+    private ImageView emojiIcon; // emoji图标
     private Button btnMore; // 右侧更多按钮(加号)
     private View buttonSend; // 发送按钮,跟当btnMore隐藏时显示
     private View modeView; // 底部更多View,包括表情或拍照等按钮
@@ -62,31 +63,38 @@ public class ChatActivity extends Activity implements View.OnClickListener{
         manager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
 
         initViews();
+        initListener();
+    }
+
+    @Override
+    protected ChatPresenter initPresenter() {
+        return new ChatPresenter();
     }
 
     private void initViews() {
         buttonSetModeVoice = (Button) findViewById(R.id.btn_set_mode_voice);
-        buttonSetModeVoice.setOnClickListener(this);
         buttonPressToSpeak = findViewById(R.id.btn_press_to_speak);
-        edittext_layout = (RelativeLayout) findViewById(R.id.edittext_layout);
-        edittext_layout.setBackgroundResource(R.drawable.input_bar_bg_normal);
-        edittext_layout.requestFocus();
+        editLayout = (RelativeLayout) findViewById(R.id.edittext_layout);
+        editLayout.setBackgroundResource(R.drawable.input_bar_bg_normal);
+        editLayout.requestFocus();
         mEditTextContent = (EditText) findViewById(R.id.et_sendmessage);
-        mEditTextContent.setOnClickListener(this);
-        iv_emoticons_normal = (ImageView) findViewById(R.id.iv_emoticons_normal);
-        iv_emoticons_normal.setOnClickListener(this);
+        emojiIcon = (ImageView) findViewById(R.id.iv_emoticons_normal);
         btnMore = (Button) findViewById(R.id.btn_more);
-        btnMore.setOnClickListener(this);
         buttonSend = findViewById(R.id.btn_send);
         modeView = findViewById(R.id.ll_more);
         expressionViewPager = (ViewPager) findViewById(R.id.vp_emoji);
-        expressionViewPager.setAdapter(new ExpressionPagerAdapter(getEmojeDatas()));
         emojiIconContainer = findViewById(R.id.ll_face_container);
         btnContainer = findViewById(R.id.ll_btn_container);
         photoGalleryBtn = (TextView) findViewById(R.id.tv_picture);
         takePhotoBtn = (TextView) findViewById(R.id.tv_take_photo);
         chatListView = (ListView) findViewById(R.id.lv_chat);
+    }
 
+    private void initListener() {
+        buttonSetModeVoice.setOnClickListener(this);
+        mEditTextContent.setOnClickListener(this);
+        emojiIcon.setOnClickListener(this);
+        btnMore.setOnClickListener(this);
         chatListView.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -95,15 +103,14 @@ public class ChatActivity extends Activity implements View.OnClickListener{
                 return false;
             }
         });
-
         mEditTextContent.setOnFocusChangeListener(new View.OnFocusChangeListener() {
 
             @Override
             public void onFocusChange(View v, boolean hasFocus) {
                 if (hasFocus) {
-                    edittext_layout.setBackgroundResource(R.drawable.input_bar_bg_active);
+                    editLayout.setBackgroundResource(R.drawable.input_bar_bg_active);
                 } else {
-                    edittext_layout.setBackgroundResource(R.drawable.input_bar_bg_normal);
+                    editLayout.setBackgroundResource(R.drawable.input_bar_bg_normal);
                 }
 
             }
@@ -123,13 +130,10 @@ public class ChatActivity extends Activity implements View.OnClickListener{
             }
 
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
-            public void afterTextChanged(Editable s) {
-
-            }
+            public void afterTextChanged(Editable s) {}
         });
     }
 
@@ -137,29 +141,43 @@ public class ChatActivity extends Activity implements View.OnClickListener{
         return new String(Character.toChars(unicodeJoy));
     }
 
-    private List<View> getEmojeDatas(){
-        List<View> views = new ArrayList<>();
-        for(int i = 0; i < 4; i++){
-            views.add(getGridViews(i));
+    private  List<View> emojiLists;
+    private void showEmojiView(){
+        if(emojiLists == null){
+            emojiLists = new ArrayList<>();
+            for(int i = 0; i < 4; i++){
+                emojiLists.add(getEmojiItemViews(i));
+            }
+            expressionViewPager.setAdapter(new ExpressionPagerAdapter(emojiLists));
         }
-        return views;
     }
 
-    private View getGridViews(int num){
-        View view  = View.inflate(ChatActivity.this, R.layout.layout_expression_gridview, null);
-        ExpandGridView gridView = (ExpandGridView) view.findViewById(R.id.gridview);
+    /**
+     * Emoji Item 系统共79个常用表情
+     * @param page
+     * @return
+     */
+    private View getEmojiItemViews(int page){
         List<String> list = new ArrayList<>();
-        int start = 21 * num;
+        int start = 21 * page;
         int length;
-        if(num == 3)
+        if(page == 3)
             length = 79;
         else
-            length = (num+1)*21;
+            length = (page+1)*21;
         for (int i = start; i < length; i++){
             list.add(getEmojiStringByUnicode(0x1F601 + i));
         }
-        ExpressionGridViewAdapter gridViewAdapter = new ExpressionGridViewAdapter(ChatActivity.this, list);
+        View view  = View.inflate(ChatActivity.this, R.layout.layout_expression_gridview, null);
+        ExpandGridView gridView = (ExpandGridView) view.findViewById(R.id.gridview);
+        final ExpressionGridViewAdapter gridViewAdapter = new ExpressionGridViewAdapter(ChatActivity.this, list);
         gridView.setAdapter(gridViewAdapter);
+        gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                mEditTextContent.append(gridViewAdapter.getItem(position));
+            }
+        });
 
         return view;
     }
@@ -170,15 +188,16 @@ public class ChatActivity extends Activity implements View.OnClickListener{
             case R.id.btn_set_mode_voice:
                 isSpeck = !isSpeck;
                 if(isSpeck){
+                    hideKeyboard();
                     buttonSetModeVoice.setBackgroundResource(R.drawable.chatting_setmode_keyboard_btn_normal);
-                    edittext_layout.setVisibility(View.GONE);
+                    editLayout.setVisibility(View.GONE);
                     buttonPressToSpeak.setVisibility(View.VISIBLE);
                     btnMore.setVisibility(View.VISIBLE);
                     buttonSend.setVisibility(View.GONE);
                 }else{
                     buttonSetModeVoice.setBackgroundResource(R.drawable.icon_chat_voice);
                     buttonPressToSpeak.setVisibility(View.GONE);
-                    edittext_layout.setVisibility(View.VISIBLE);
+                    editLayout.setVisibility(View.VISIBLE);
                     if (TextUtils.isEmpty(mEditTextContent.getText().toString())) {
                         btnMore.setVisibility(View.VISIBLE);
                         buttonSend.setVisibility(View.GONE);
@@ -190,6 +209,7 @@ public class ChatActivity extends Activity implements View.OnClickListener{
                 break;
             case R.id.iv_emoticons_normal:
                 hideKeyboard();
+                showEmojiView();
                 modeView.setVisibility(View.VISIBLE);
                 emojiIconContainer.setVisibility(View.VISIBLE);
                 btnContainer.setVisibility(View.GONE);
@@ -201,7 +221,7 @@ public class ChatActivity extends Activity implements View.OnClickListener{
                 btnContainer.setVisibility(View.VISIBLE);
                 break;
             case R.id.et_sendmessage:
-                edittext_layout.setBackgroundResource(R.drawable.input_bar_bg_active);
+                editLayout.setBackgroundResource(R.drawable.input_bar_bg_active);
                 modeView.setVisibility(View.GONE);
                 break;
         }
@@ -214,4 +234,13 @@ public class ChatActivity extends Activity implements View.OnClickListener{
         }
     }
 
+    @Override
+    public void showLoadView() {
+
+    }
+
+    @Override
+    public void hideLoadView() {
+
+    }
 }

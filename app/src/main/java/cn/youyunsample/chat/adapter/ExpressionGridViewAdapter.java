@@ -23,10 +23,6 @@ public class ExpressionGridViewAdapter extends BaseAdapter {
         this.emojiList = emojiList;
     }
 
-    public void setData(List<String> emojiList){
-        this.emojiList = emojiList;
-    }
-
     @Override
     public int getCount() {
         return emojiList.size();
